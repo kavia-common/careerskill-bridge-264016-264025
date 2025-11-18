@@ -10,8 +10,9 @@ class Settings(BaseSettings):
     """
     Application configuration settings loaded from environment variables.
 
-    Note:
+    Notes:
     - Do not hardcode secrets. Provide via environment variables or use defaults only for local dev.
+    - Extra environment variables are ignored to prevent startup failures if the runtime injects additional fields.
     """
 
     # Basic app info
@@ -37,16 +38,22 @@ class Settings(BaseSettings):
         description="SQLAlchemy database URL. e.g., sqlite:///./app.db or postgres://...",
     )
 
-    # Common frontend-provided / deployment envs (ignored if unused elsewhere but defined to prevent 'extra' errors)
+    # Explicitly declared runtime-injected config with env aliases to avoid 'extra fields' issues
     BACKEND_URL: str | None = Field(default=None, description="Public backend URL base", alias="backend_url")
     FRONTEND_URL: str | None = Field(default=None, description="Public frontend URL base", alias="frontend_url")
     WS_URL: str | None = Field(default=None, description="Public websocket URL base", alias="ws_url")
     SITE_URL: str | None = Field(default=None, description="Site base URL for redirects", alias="site_url")
 
     # CORS fine-grained options, parsed from comma-separated strings if provided
-    ALLOWED_ORIGINS: List[str] | None = Field(default=None, description="CORS allowed origins", alias="allowed_origins")
-    ALLOWED_HEADERS: List[str] | None = Field(default=None, description="CORS allowed headers", alias="allowed_headers")
-    ALLOWED_METHODS: List[str] | None = Field(default=None, description="CORS allowed methods", alias="allowed_methods")
+    ALLOWED_ORIGINS: List[str] | None = Field(
+        default=None, description="CORS allowed origins", alias="allowed_origins"
+    )
+    ALLOWED_HEADERS: List[str] | None = Field(
+        default=None, description="CORS allowed headers", alias="allowed_headers"
+    )
+    ALLOWED_METHODS: List[str] | None = Field(
+        default=None, description="CORS allowed methods", alias="allowed_methods"
+    )
     CORS_MAX_AGE: int | None = Field(default=None, description="CORS max age seconds", alias="cors_max_age")
 
     COOKIE_DOMAIN: str | None = Field(default=None, description="Cookie domain", alias="cookie_domain")
@@ -56,11 +63,15 @@ class Settings(BaseSettings):
     UVICORN_WORKERS: int | None = Field(default=None, description="Uvicorn workers", alias="uvicorn_workers")
     NODE_ENV: str | None = Field(default=None, description="Node-like environment label", alias="node_env")
     REQUEST_TIMEOUT_MS: int | None = Field(default=None, description="Request timeout ms", alias="request_timeout_ms")
-    RATE_LIMIT_WINDOW_S: int | None = Field(default=None, description="Rate limit window seconds", alias="rate_limit_window_s")
-    RATE_LIMIT_MAX: int | None = Field(default=None, description="Rate limit max requests per window", alias="rate_limit_max")
+    RATE_LIMIT_WINDOW_S: int | None = Field(
+        default=None, description="Rate limit window seconds", alias="rate_limit_window_s"
+    )
+    RATE_LIMIT_MAX: int | None = Field(
+        default=None, description="Rate limit max requests per window", alias="rate_limit_max"
+    )
     PORT: int | None = Field(default=None, description="Service port", alias="port")
 
-    # React-style variables (present in env but backend doesn't use them)
+    # React-style variables (present in env but backend doesn't use them, declared to avoid 'extra' errors)
     REACT_APP_API_BASE: str | None = Field(default=None, description="React app API base")
     REACT_APP_BACKEND_URL: str | None = Field(default=None, description="React app backend URL")
     REACT_APP_FRONTEND_URL: str | None = Field(default=None, description="React app frontend URL")
@@ -85,7 +96,6 @@ class Settings(BaseSettings):
         if v is None:
             return ["*"]
         if isinstance(v, str):
-            # Split on comma and strip, ignore empty
             parts = [p.strip() for p in v.split(",") if p.strip()]
             return parts or ["*"]
         return v
@@ -93,11 +103,47 @@ class Settings(BaseSettings):
     @field_validator("ALLOWED_ORIGINS", "ALLOWED_HEADERS", "ALLOWED_METHODS", mode="before")
     @classmethod
     def parse_csv_lists(cls, v):
+        """Allow list-like envs to be provided as comma-separated strings."""
         if v is None:
             return None
         if isinstance(v, str):
             parts = [p.strip() for p in v.split(",") if p.strip()]
             return parts
+        return v
+
+    @field_validator(
+        "UVICORN_WORKERS",
+        "REQUEST_TIMEOUT_MS",
+        "RATE_LIMIT_WINDOW_S",
+        "RATE_LIMIT_MAX",
+        "CORS_MAX_AGE",
+        "PORT",
+        mode="before",
+    )
+    @classmethod
+    def parse_ints(cls, v):
+        """Cast numeric strings to integers; treat empty strings as None."""
+        if v is None or (isinstance(v, str) and v.strip() == ""):
+            return None
+        try:
+            return int(v)
+        except Exception:
+            return v
+
+    @field_validator("TRUST_PROXY", mode="before")
+    @classmethod
+    def parse_bool(cls, v):
+        """Cast common truthy/falsey string values to bool."""
+        if v is None:
+            return None
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            val = v.strip().lower()
+            if val in {"1", "true", "yes", "y", "on"}:
+                return True
+            if val in {"0", "false", "no", "n", "off"}:
+                return False
         return v
 
 
