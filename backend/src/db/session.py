@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from src.core.config import get_settings
 
+# Load settings once; extra env vars are ignored by Settings to avoid validation errors
 settings = get_settings()
 
 # Create engine; SQLite requires check_same_thread False for single-threaded apps when used across threads.

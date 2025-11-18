@@ -6,6 +6,7 @@ from src.db.session import engine, db_session
 from src.db.base import Base
 from src.db.init_db import create_initial_data
 
+# Load validated settings; Settings now ignores unknown env vars per model_config.extra='ignore'
 settings = get_settings()
 
 app = FastAPI(
@@ -17,12 +18,17 @@ app = FastAPI(
     ],
 )
 
+# Prefer fine-grained CORS settings if provided, else fall back to simple defaults
+allow_origins = settings.ALLOWED_ORIGINS or settings.CORS_ORIGINS
+allow_methods = settings.ALLOWED_METHODS or ["*"]
+allow_headers = settings.ALLOWED_HEADERS or ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=allow_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=allow_methods,
+    allow_headers=allow_headers,
 )
 
 
@@ -43,6 +49,7 @@ def on_startup() -> None:
         create_initial_data(db)
 
 
+# PUBLIC_INTERFACE
 @app.get("/", tags=["health"], summary="Health Check")
 def health_check():
     """
