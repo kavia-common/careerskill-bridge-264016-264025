@@ -1,10 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import logging
 
 from src.core.config import get_settings
 from src.db.session import engine, db_session
 from src.db.base import Base
 from src.db.init_db import create_initial_data
+
+logger = logging.getLogger(__name__)
 
 # Load validated settings; Settings now ignores unknown env vars per model_config.extra='ignore'
 settings = get_settings()
@@ -18,10 +21,23 @@ app = FastAPI(
     ],
 )
 
+def _ensure_list_str(value, default=None):
+    """
+    Normalize a value into a list[str].
+    """
+    if default is None:
+        default = []
+    if value is None:
+        return list(default)
+    if isinstance(value, (list, tuple)):
+        return [str(v) for v in value]
+    # single string => wrap
+    return [str(value)]
+
 # Prefer fine-grained CORS settings if provided, else fall back to simple defaults
-allow_origins = settings.ALLOWED_ORIGINS or settings.CORS_ORIGINS
-allow_methods = settings.ALLOWED_METHODS or ["*"]
-allow_headers = settings.ALLOWED_HEADERS or ["*"]
+allow_origins = _ensure_list_str(settings.ALLOWED_ORIGINS or settings.CORS_ORIGINS or ["*"], default=["*"])
+allow_methods = _ensure_list_str(settings.ALLOWED_METHODS or ["*"], default=["*"])
+allow_headers = _ensure_list_str(settings.ALLOWED_HEADERS or ["*"], default=["*"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,13 +56,21 @@ def on_startup() -> None:
     This will:
     - Create all tables if they do not exist (for dev)
     - Insert minimal demo data for UI integration
-    """
-    # Create tables (for dev convenience; migrations are also provided)
-    Base.metadata.create_all(bind=engine)
 
-    # Seed minimal data
-    with db_session() as db:
-        create_initial_data(db)
+    Startup is hardened so DB issues do not prevent the app from binding to the port.
+    """
+    try:
+        # Create tables (for dev convenience; migrations are also provided)
+        Base.metadata.create_all(bind=engine)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("DB table creation failed on startup: %s", exc)
+
+    # Seed minimal data (best-effort)
+    try:
+        with db_session() as db:
+            create_initial_data(db)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("DB seed failed on startup (continuing service): %s", exc)
 
 
 # PUBLIC_INTERFACE
