@@ -3,7 +3,7 @@ import os
 
 from src.api.main import app
 
-# Get the OpenAPI schema
+# Get the OpenAPI schema with latest routers loaded
 openapi_schema = app.openapi()
 
 # Write to file

@@ -7,18 +7,43 @@ from src.db.session import engine, db_session
 from src.db.base import Base
 from src.db.init_db import create_initial_data
 
+# Routers
+from src.api.routers_auth import router as auth_router
+from src.api.routers_users import router as users_router
+from src.api.routers_modules import router as modules_router, router_lessons as lessons_router
+from src.api.routers_quizzes import router as quizzes_router
+from src.api.routers_progress import router as progress_router
+from src.api.routers_mentorship import router as mentorship_router
+from src.api.routers_portfolio import router as portfolio_router
+from src.api.routers_notifications import router as notifications_router
+from src.api.routers_jobtools import router as jobtools_router
+from src.api.routers_ws import router as ws_router
+
 logger = logging.getLogger(__name__)
 
-# Load validated settings; Settings now ignores unknown env vars per model_config.extra='ignore'
+# Load validated settings
 settings = get_settings()
+
+openapi_tags = [
+    {"name": "health", "description": "Service health and info"},
+    {"name": "auth", "description": "Authentication (register/login)"},
+    {"name": "users", "description": "User profile endpoints"},
+    {"name": "modules", "description": "Learning modules"},
+    {"name": "lessons", "description": "Lessons within modules"},
+    {"name": "quizzes", "description": "Quizzes and results"},
+    {"name": "progress", "description": "Learning progress"},
+    {"name": "mentorship", "description": "Mentors and requests"},
+    {"name": "portfolio", "description": "Portfolio items"},
+    {"name": "notifications", "description": "Notifications list"},
+    {"name": "jobtools", "description": "Resume and interview tools"},
+    {"name": "websocket", "description": "Real-time notifications WebSocket"},
+]
 
 app = FastAPI(
     title=settings.APP_NAME,
     description=settings.DESCRIPTION,
     version=settings.VERSION,
-    openapi_tags=[
-        {"name": "health", "description": "Service health and info"},
-    ],
+    openapi_tags=openapi_tags,
 )
 
 def _ensure_list_str(value, default=None):
@@ -83,3 +108,17 @@ def health_check():
     - message: Healthy
     """
     return {"message": "Healthy"}
+
+
+# Include routers
+app.include_router(auth_router)
+app.include_router(users_router)
+app.include_router(modules_router)
+app.include_router(lessons_router)
+app.include_router(quizzes_router)
+app.include_router(progress_router)
+app.include_router(mentorship_router)
+app.include_router(portfolio_router)
+app.include_router(notifications_router)
+app.include_router(jobtools_router)
+app.include_router(ws_router)
