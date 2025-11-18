@@ -1,7 +1,7 @@
 # SkillBridge LMS Backend (FastAPI)
 
-- Service default port: 3001 (override with PORT env)
-- CORS: Automatically includes configured ALLOWED_ORIGINS/CORS_ORIGINS and augments with FRONTEND_URL/REACT_APP_FRONTEND_URL and localhost:3000 for dev.
+- Service default port: 3001 (override with PORT env). If PORT is unset or invalid, the server binds to 3001.
+- CORS: Uses ALLOWED_ORIGINS/CORS_ORIGINS and automatically augments with FRONTEND_URL/REACT_APP_FRONTEND_URL and http(s)://localhost:3000 for dev to ensure the actual frontend origin is included.
 - WebSocket: /ws/notifications (see GET /ws/usage)
 
 Environment variables (examples):
