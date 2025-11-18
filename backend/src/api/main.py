@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+import os
 
 from src.core.config import get_settings
 from src.db.session import engine, db_session
@@ -59,8 +60,30 @@ def _ensure_list_str(value, default=None):
     # single string => wrap
     return [str(value)]
 
+def _augment_origins(origins: list[str]) -> list[str]:
+    """
+    Add known frontend origin hints from environment into the allowed list.
+    - Considers FRONTEND_URL and REACT_APP_FRONTEND_URL
+    - Also adds the currently running frontend dev URL if available in env
+    """
+    candidates = [
+        settings.FRONTEND_URL,
+        os.environ.get("REACT_APP_FRONTEND_URL"),
+        os.environ.get("FRONTEND_URL"),
+        "http://localhost:3000",
+        "https://localhost:3000",
+    ]
+    out = list(origins)
+    for c in candidates:
+        if c and c not in out and c != "*":
+            out.append(c)
+    return out
+
 # Prefer fine-grained CORS settings if provided, else fall back to simple defaults
 allow_origins = _ensure_list_str(settings.ALLOWED_ORIGINS or settings.CORS_ORIGINS or ["*"], default=["*"])
+# Ensure running frontend URL is present for integration smoke path
+allow_origins = _augment_origins(allow_origins)
+
 allow_methods = _ensure_list_str(settings.ALLOWED_METHODS or ["*"], default=["*"])
 allow_headers = _ensure_list_str(settings.ALLOWED_HEADERS or ["*"], default=["*"])
 

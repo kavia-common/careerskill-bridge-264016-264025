@@ -38,7 +38,7 @@ class Settings(BaseSettings):
         description="SQLAlchemy database URL. e.g., sqlite:///./app.db or postgres://...",
     )
 
-    # Explicitly declared runtime-injected config with env aliases to avoid 'extra fields' issues
+    # Explicit runtime-injected config (aliases kept to tolerate varied env naming)
     BACKEND_URL: str | None = Field(default=None, description="Public backend URL base", alias="backend_url")
     FRONTEND_URL: str | None = Field(default=None, description="Public frontend URL base", alias="frontend_url")
     WS_URL: str | None = Field(default=None, description="Public websocket URL base", alias="ws_url")
@@ -69,7 +69,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_MAX: int | None = Field(
         default=None, description="Rate limit max requests per window", alias="rate_limit_max"
     )
-    PORT: int | None = Field(default=None, description="Service port", alias="port")
+    PORT: int | None = Field(default=3001, description="Service port", alias="port")
 
     # React-style variables (present in env but backend doesn't use them, declared to avoid 'extra' errors)
     REACT_APP_API_BASE: str | None = Field(default=None, description="React app API base")
