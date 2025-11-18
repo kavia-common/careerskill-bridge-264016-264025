@@ -5,6 +5,7 @@
 - WebSocket: /ws/notifications (see GET /ws/usage)
 
 Environment variables (examples):
+- See .env.example in this directory for a ready-to-copy template.
 - PORT=3001
 - FRONTEND_URL=https://vscode-internal-34534-beta.beta01.cloud.kavia.ai:3000
 - BACKEND_URL=https://vscode-internal-34534-beta.beta01.cloud.kavia.ai:3001

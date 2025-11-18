@@ -8,6 +8,7 @@ Frontend integration quickstart:
 
 Backend env sample:
 - See backend/.env.example for minimal variables (PORT, FRONTEND_URL, BACKEND_URL, WS_URL, CORS_ORIGINS, SECRET_KEY).
+- Place the .env file either at repo root or in backend/; pydantic-settings will read .env.
 
 OpenAPI:
 - The backend publishes OpenAPI at /openapi.json and docs at /docs.
