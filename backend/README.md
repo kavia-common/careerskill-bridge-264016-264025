@@ -11,6 +11,14 @@ Environment variables (examples):
 - WS_URL=wss://vscode-internal-34534-beta.beta01.cloud.kavia.ai:3001/ws/notifications
 - CORS_ORIGINS=https://vscode-internal-34534-beta.beta01.cloud.kavia.ai:3000
 
+Frontend (React) expected envs:
+- REACT_APP_API_BASE=https://vscode-internal-34534-beta.beta01.cloud.kavia.ai:3001
+- REACT_APP_WS_URL=wss://vscode-internal-34534-beta.beta01.cloud.kavia.ai:3001/ws/notifications
+
+OpenAPI:
+- Live: GET /openapi.json, docs at /docs
+- Regenerate repo copy: `python -m src.api.generate_openapi` (writes backend/interfaces/openapi.json)
+
 Quick E2E smoke path (with Authorization: Bearer <token>):
 1) POST /auth/register -> token
 2) GET /modules

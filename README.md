@@ -6,6 +6,9 @@ Frontend integration quickstart:
   - REACT_APP_WS_URL to wss(s)://<host>:3001/ws/notifications
 - Backend CORS automatically includes configured origins plus the actual frontend URL and localhost:3000 for dev.
 
+Backend env sample:
+- See backend/.env.example for minimal variables (PORT, FRONTEND_URL, BACKEND_URL, WS_URL, CORS_ORIGINS, SECRET_KEY).
+
 OpenAPI:
 - The backend publishes OpenAPI at /openapi.json and docs at /docs.
 - To re-generate the repo copy of the spec: `python -m src.api.generate_openapi` (writes backend/interfaces/openapi.json).
