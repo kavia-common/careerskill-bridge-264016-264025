@@ -41,3 +41,18 @@ uvicorn==0.34.0
 uvloop==0.21.0
 watchfiles==1.0.5
 websockets==15.0.1
+
+# ORM and Migrations
+SQLAlchemy==2.0.36
+alembic==1.14.0
+
+# Password hashing and JWT
+passlib==1.7.4
+bcrypt==4.2.1
+python-jose==3.3.0
+
+# Pydantic settings
+pydantic-settings==2.6.1
+
+# SQLite driver (built-in), include aiosqlite optional for future async
+aiosqlite==0.20.0
