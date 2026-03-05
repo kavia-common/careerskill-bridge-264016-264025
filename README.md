@@ -3,9 +3,9 @@
 This repository contains the **SkillBridge backend** (FastAPI). The **React frontend** lives in a sibling workspace folder:
 `../careerskill-bridge-264016-264026/frontend_web_app`.
 
-## All-in-one (manual) run script
+## Backend-only run script
 
-A root-level `script.sh` is provided to install dependencies (idempotently) and run **both** backend + frontend together.
+A root-level `script.sh` is provided to install backend dependencies (idempotently) and run **ONLY** the backend.
 
 1) Ensure the script is executable:
 
@@ -13,25 +13,26 @@ A root-level `script.sh` is provided to install dependencies (idempotently) and 
 chmod +x ./script.sh
 ```
 
-2) Run everything:
+2) Run the backend:
 
 ```bash
 ./script.sh
 ```
 
 Defaults:
-- Frontend: http://localhost:3000
 - Backend: http://localhost:3001 (docs: http://localhost:3001/docs)
 
 Optional flags/env vars:
-- `INSTALL_DEPS=0 ./script.sh` to skip installs
-- `FORCE_INSTALL=1 ./script.sh` to force re-install (npm + pip)
-- `FRONTEND_PORT=3000 BACKEND_PORT=3001 ./script.sh` to override ports (must be different)
+- `INSTALL_DEPS=0 ./script.sh` to skip pip installs
+- `FORCE_INSTALL=1 ./script.sh` to force re-install (pip)
+- `BACKEND_PORT=3001 BACKEND_HOST=0.0.0.0 ./script.sh` to override bind address/port
 
 > Note: This script is for **manual development runs** and does not modify or interfere with the PreviewManager port/command configuration.
 
 ## Frontend integration quickstart
 
+- Run the frontend separately from the sibling workspace folder:
+  - `../careerskill-bridge-264016-264026/frontend_web_app`
 - Copy `../careerskill-bridge-264016-264026/frontend_web_app/.env.example` to `.env` (in the same frontend folder) and adjust:
   - `REACT_APP_API_BASE` to the backend base URL (local dev: `http://localhost:3001`)
   - `REACT_APP_WS_URL` to `ws://localhost:3001/ws/notifications`
