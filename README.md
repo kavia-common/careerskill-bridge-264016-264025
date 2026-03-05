@@ -13,3 +13,7 @@ Backend env sample:
 OpenAPI:
 - The backend publishes OpenAPI at /openapi.json and docs at /docs.
 - To re-generate the repo copy of the spec: `python -m src.api.generate_openapi` (writes backend/interfaces/openapi.json).
+
+Manual backend run:
+- From this repo root: `./script.sh` (starts FastAPI on port 3001)
+- If dependencies are not installed: `INSTALL_DEPS=1 ./script.sh`
