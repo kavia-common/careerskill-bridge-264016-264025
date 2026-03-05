@@ -7,7 +7,8 @@
 # Features:
 # - Safe bash: set -euo pipefail
 # - Installs backend Python dependencies idempotently (skips when already present, unless forced)
-# - Runs backend (FastAPI) on port 3001
+# - Runs backend (FastAPI) on a configurable port (default: 3001)
+# - Gracefully handles the common case where port 3001 is already in use (often by PreviewManager)
 # - Clean shutdown (SIGINT/SIGTERM trap)
 #
 # Usage:
@@ -18,11 +19,13 @@
 #   INSTALL_DEPS=1        Install missing deps if not installed (default: 1)
 #   FORCE_INSTALL=1       Force reinstall deps even if they look installed (default: 0)
 #   BACKEND_PORT=3001     Backend port override (default: 3001)
+#                         Special: BACKEND_PORT=0 auto-selects a free ephemeral port.
 #   BACKEND_HOST=0.0.0.0  Backend bind host (default: 0.0.0.0)
 #
 # Notes:
 # - Backend reads config from a .env file at repo root or backend/ (Pydantic settings).
 # - This script deliberately does NOT install/run the frontend.
+# - This script will NOT stop/kill any existing process using a port; it will only detect and guide.
 
 set -euo pipefail
 
@@ -68,6 +71,100 @@ if [[ ! -d "${BACKEND_DIR}" ]]; then
   log "runner" "ERROR: backend directory not found at: ${BACKEND_DIR}"
   exit 1
 fi
+
+# ----------------------------
+# Port selection / preflight
+# ----------------------------
+is_port_listening() {
+  local port="$1"
+  # ss is widely available in Linux images; prefer it for speed/stability.
+  # We only check LISTEN sockets because that's what prevents binding.
+  if command -v ss >/dev/null 2>&1; then
+    ss -ltn "sport = :${port}" 2>/dev/null | awk 'NR>1 {found=1} END {exit(found?0:1)}'
+    return $?
+  fi
+
+  # Fallbacks for unusual environments.
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1
+    return $?
+  fi
+
+  if command -v fuser >/dev/null 2>&1; then
+    fuser -n tcp "${port}" >/dev/null 2>&1
+    return $?
+  fi
+
+  # Last-resort: assume not listening if we cannot detect.
+  return 1
+}
+
+port_owner_hint() {
+  local port="$1"
+  # Best-effort hint only; never fail the script if these tools aren't present.
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"${port}" -sTCP:LISTEN 2>/dev/null | awk 'NR==2 {print $1" (pid "$2")"}'
+    return 0
+  fi
+  if command -v ss >/dev/null 2>&1; then
+    # Extract pid=... when possible
+    ss -ltnp "sport = :${port}" 2>/dev/null | awk 'NR==2 {print $NF}' | sed 's/users:(("//; s/")).*$//'
+    return 0
+  fi
+  echo ""
+}
+
+choose_free_port() {
+  # Bind to port 0 on localhost to let the OS pick a free port, then close immediately.
+  # This is deterministic and avoids racy "pick a random port" logic.
+  python - <<'PY'
+import socket
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind(("127.0.0.1", 0))
+port = s.getsockname()[1]
+s.close()
+print(port)
+PY
+}
+
+validate_and_select_port() {
+  local requested_port="$1"
+
+  if [[ "${requested_port}" == "0" ]]; then
+    local selected
+    selected="$(choose_free_port)"
+    log "runner" "BACKEND_PORT=0 requested; selected free port: ${selected}"
+    echo "${selected}"
+    return 0
+  fi
+
+  if ! [[ "${requested_port}" =~ ^[0-9]+$ ]] || ((requested_port < 1 || requested_port > 65535)); then
+    log "runner" "ERROR: BACKEND_PORT must be an integer in range 1..65535 (or 0 for auto). Got: ${requested_port}"
+    exit 1
+  fi
+
+  if is_port_listening "${requested_port}"; then
+    local hint
+    hint="$(port_owner_hint "${requested_port}")"
+    log "runner" "ERROR: Port ${requested_port} is already in use (a process is listening)."
+    if [[ -n "${hint}" ]]; then
+      log "runner" "Hint: listener appears to be: ${hint}"
+    fi
+    log "runner" "Common cause: the Preview system is already running the backend on port ${requested_port}."
+    log "runner" "Action options:"
+    log "runner" "  1) Use the already-running backend (recommended when preview is active):"
+    log "runner" "     - Open docs at: http://localhost:${requested_port}/docs"
+    log "runner" "  2) Run this script on a different port:"
+    log "runner" "     - BACKEND_PORT=3002 ./script.sh"
+    log "runner" "  3) Let this script auto-select a free port:"
+    log "runner" "     - BACKEND_PORT=0 ./script.sh"
+    exit 2
+  fi
+
+  echo "${requested_port}"
+}
+
+BACKEND_PORT="$(validate_and_select_port "${BACKEND_PORT}")"
 
 # ----------------------------
 # Dependency installation (idempotent)
