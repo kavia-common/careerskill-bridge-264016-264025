@@ -1,10 +1,42 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
+import logging
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from src.core.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+
+def _ensure_passlib_bcrypt_compat() -> None:
+    """
+    Ensure passlib's bcrypt handler can read the bcrypt version.
+
+    Contract:
+    - Inputs: none
+    - Outputs: none
+    - Side effects: may set `bcrypt.__about__.__version__` dynamically if missing.
+    - Errors: never raises; logs at debug on patch, warning on unexpected failure.
+
+    Why:
+    - passlib 1.7.4 expects `bcrypt.__about__.__version__`, but bcrypt 4.x removed it.
+      This triggers noisy "(trapped) error reading bcrypt version" logs and can break
+      hashing/verification in some environments.
+    """
+    try:
+        import bcrypt  # type: ignore
+
+        if not hasattr(bcrypt, "__about__"):
+            bcrypt.__about__ = type("about", (), {"__version__": bcrypt.__version__})
+            logger.debug("Applied bcrypt/passlib compatibility shim (added bcrypt.__about__.__version__).")
+    except Exception:
+        # Never block app startup due to best-effort compatibility patch.
+        logger.warning("Failed to apply bcrypt/passlib compatibility shim.", exc_info=True)
+
+
+_ensure_passlib_bcrypt_compat()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
